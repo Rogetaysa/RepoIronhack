@@ -121,62 +121,70 @@ plt.show()
 
 # 10 Freqüència mitjana per cohort
 print("\n\033[1m\033[95mPARTE 10: Freqüència mitjana per cohorte\033[0m")
-# 10.1 Filtrar usuaris que han fet més d'una sol·licitud
+df_cash['created_at'] = pd.to_datetime(df_cash['created_at'])
+df_cash['cohort'] = pd.to_datetime(df_cash['cohort'], format='%Y-%m')
+# 10.1 Filtrar usuaris que han fet més d'una sol·licitud, excloent 'rejected'
 user_counts = df_cash['user_id'].value_counts()
 multiple_requests_users = user_counts[user_counts > 1].index
-df_cash_filtered = df_cash[df_cash['user_id'].isin(multiple_requests_users)]
+df_cash_filtered = df_cash[(df_cash['status'] != 'rejected') & (df_cash['user_id'].isin(user_counts[user_counts > 1].index))]
 # 10.2: Calcular la freqüència per usuari com a la diferència entre sol·licituds
 df_cash_filtered = df_cash_filtered.sort_values(by=['user_id', 'created_at'])
 df_cash_filtered['days_between'] = df_cash_filtered.groupby('user_id')['created_at'].diff().dt.days.dropna()
 # 10.3: Calcular el nombre d'usuaris que només han fet una sol·licitud per cohort
 single_request_users = user_counts[user_counts == 1].index
-df_cash_single_request = df_cash[df_cash['user_id'].isin(single_request_users)]
+df_cash_single_request = df_cash[df_cash['user_id'].isin(single_request_users) & (df_cash['status'] != 'rejected')]
 single_request_count = df_cash_single_request.groupby('cohort')['user_id'].nunique().reset_index(name='single_request_count')
-# Ordenar cronològicament les cohorts per l'eix X
-df_cash_filtered['cohort'] = pd.to_datetime(df_cash_filtered['cohort'], format='%Y-%m')
-df_cash_filtered = df_cash_filtered.sort_values(by='cohort')
-single_request_count['cohort'] = pd.to_datetime(single_request_count['cohort'], format='%Y-%m')
-single_request_count = single_request_count.sort_values(by='cohort')
 # 10.4: Visualitzar el diagrama de caixes per cohort, afegint valors clau
 plt.figure(figsize=(12, 8))
 box_plot = sns.boxplot(x='cohort', y='days_between', data=df_cash_filtered, palette='Set2')
-# 10.5 Afegir valors clau com quartils, mediana i outliers
-for i, artist in enumerate(box_plot.artists):
-    # Per cada cohort, agafem el boxplot actual
-    box_plot_lines = box_plot.lines[6*i:6*(i+1)]
-    # Mediana (línia central)
-    median = box_plot_lines[2].get_ydata()[0]
-    plt.text(i, median, f'{median:.1f}', ha='center', va='bottom', color='black', fontsize=10, fontweight='bold')
-    # Quartils (percentils 25 i 75)
-    q1 = box_plot_lines[1].get_ydata()[0]
-    q3 = box_plot_lines[1].get_ydata()[1]
-    plt.text(i, q1, f'{q1:.1f}', ha='center', va='top', color='blue', fontsize=9)
-    plt.text(i, q3, f'{q3:.1f}', ha='center', va='bottom', color='blue', fontsize=9)
-    # Valors mínims i màxims sense comptar outliers
-    lower_whisker = box_plot_lines[0].get_ydata()[1]
-    upper_whisker = box_plot_lines[0].get_ydata()[0]
-    plt.text(i, lower_whisker, f'{lower_whisker:.1f}', ha='center', va='top', color='green', fontsize=9)
-    plt.text(i, upper_whisker, f'{upper_whisker:.1f}', ha='center', va='bottom', color='green', fontsize=9)
+# Calcular i afegir valors clau com quartils, mediana, mitjana, màxim i mínim
+stats = df_cash_filtered.groupby('cohort')['days_between'].describe()
+for i, cohort in enumerate(stats.index):
+    median = stats.loc[cohort, '50%']
+    q1 = stats.loc[cohort, '25%']
+    q3 = stats.loc[cohort, '75%']
+    mean = stats.loc[cohort, 'mean']
+    minimum = stats.loc[cohort, 'min']
+    maximum = stats.loc[cohort, 'max']
+    # Desplazar los textos a la derecha
+    plt.text(i + 0.3, median, f'{median:.1f}', ha='center', va='bottom', color='black', fontsize=10, fontweight='bold')
+    plt.text(i + 0.3, q1, f'{q1:.1f}', ha='center', va='top', color='blue', fontsize=9)
+    plt.text(i + 0.3, q3, f'{q3:.1f}', ha='center', va='bottom', color='blue', fontsize=9)
+    plt.text(i + 0.3, mean, f'{mean:.1f}', ha='center', va='bottom', color='red', fontsize=9)
+    plt.text(i + 0.3, minimum, f'{minimum:.1f}', ha='center', va='top', color='green', fontsize=9)
+    plt.text(i + 0.3, maximum, f'{maximum:.1f}', ha='center', va='bottom', color='purple', fontsize=9)
 # 10.6 Ajustaments visuals
 plt.xticks(rotation=45)
 plt.title('Distribució de la freqüència de sol·licituds per cohort (usuaris amb més d\'una sol·licitud)')
 plt.xlabel('Cohort (Mes i Any)')
 plt.ylabel('Dies entre sol·licituds')
-# 10.7 Afegir una taula amb el nombre d'usuaris que només han fet una sol·licitud
-from matplotlib.table import Table
-# Afegir la taula a sota del gràfic
-table_data = [single_request_count['single_request_count'].values]
-cohort_labels = single_request_count['cohort'].dt.strftime('%Y-%m').values
-# Definir la taula
-table = plt.table(cellText=table_data, colLabels=cohort_labels, loc='bottom', cellLoc='center', bbox=[0, -0.4, 1, 0.2])
+# Agregar leyenda para los colores
+legend_elements = [
+    plt.Line2D([0], [0], marker='o', color='w', label='Mitjana', markerfacecolor='red', markersize=10),
+    plt.Line2D([0], [0], marker='o', color='w', label='Mediana', markerfacecolor='black', markersize=10),
+    plt.Line2D([0], [0], marker='o', color='w', label='Q1', markerfacecolor='blue', markersize=10),
+    plt.Line2D([0], [0], marker='o', color='w', label='Q3', markerfacecolor='blue', markersize=10),
+    plt.Line2D([0], [0], marker='o', color='w', label='Mínim', markerfacecolor='green', markersize=10),
+    plt.Line2D([0], [0], marker='o', color='w', label='Màxim', markerfacecolor='purple', markersize=10)
+]
+plt.legend(handles=legend_elements, loc='upper right', fontsize=9, title='Referències de Color')
+# Ajustar el layout para los textos desplazados
+plt.subplots_adjust(left=0.1, bottom=0.2)
+# 10.9 Mostrar el diagrama
+plt.show()
+# Crear una nova figura per la taula de eliminats en format horizontal
+plt.figure(figsize=(12, 4))
+# Crear la taula horizontal separada
+table = plt.table(cellText=[single_request_count['single_request_count'].values],
+                  colLabels=single_request_count['cohort'].dt.strftime('%Y-%m'),
+                  loc='center', cellLoc='center')
 table.auto_set_font_size(False)
 table.set_fontsize(10)
 table.scale(1, 1.5)
-# Afegir el text fora de la taula (com a llegenda)
-plt.figtext(0.5, -0.15, 'Quantitat d\'usuaris que només han fet una sola sol·licitud per cohort', ha='center', fontsize=10, fontweight='bold')
-# 10.8 Ajustar el layout per a que la taula no es solapi amb el gràfic
-plt.subplots_adjust(left=0.1, bottom=0.3)
-# 10.9 Mostrar el diagrama i la taula
+# Ocultar ejes ya que solo mostramos la tabla
+plt.axis('off')
+plt.title('Quantitat d\'usuaris eliminats que solo han hecho una solicitud')
+# Mostrar la nova taula
 plt.show()
 
 
@@ -207,10 +215,12 @@ for p in graf_ing.patches:
 
 # Mostrar el gráfico
 plt.show()
-# 12. Distribucion de estado por cohorte
 
+
+
+# 12. Distribucion de estado por cohorte
 print("\n\033[1m\033[95mPARTE 12: Flor Distribucion de estado por cohorte\033[0m")
-#cohort_status_counts.plot(kind='bar', stacked=True, figsize=(10, 6))
+cohort_status_counts = df_cash.pivot_table(index='cohort', columns='status', aggfunc='size', fill_value=0)
 cohort_status_counts.plot(kind='bar', stacked=True, figsize=(10, 6))
 
 # Configuramos el título y las etiquetas
@@ -228,7 +238,6 @@ plt.show()
 #13------- Cristian test
 #13.1
 print("\n\033[1m\033[95mPARTE 13: Cristian, Tasas incidentes por cohorte en %\033[0m")
-cohort_status_counts = df_cash.pivot_table(index='cohort', columns='status', aggfunc='size', fill_value=0)
 # Agregamos una fila con los totales para cada cohorte
 cohort_status_counts.loc['Total'] = cohort_status_counts.sum()
 # Mostramos el DataFrame con los totales
@@ -356,9 +365,14 @@ sns.lineplot(x='cohort', y='total_incidents', data=cohort_incidents, ax=ax2, col
 ax2.set_ylabel('Cantidad Total de Incidencias', fontsize=12, color='red')
 ax2.tick_params('y', colors='red')
 
-# Añadir los valores totales por encima de las barras
+# Añadir los valores totales por encima de las barras y almacenar las coordenadas para la línea
+y_values = []
 for i, total in enumerate(cohort_incidents['total_incidents']):
     ax2.text(i, total + 5, f'{int(total)}', ha='center', color='red', fontsize=12)
+    y_values.append(total)  # Almacenar los valores para la línea
+
+# Graficar la línea que conecta los totales
+ax2.plot(cohort_incidents.index, y_values, color='red', linestyle='--', linewidth=1.5)
 
 # Asegurar que ambos ejes compartan la misma escala
 ax2.set_ylim(ax1.get_ylim())
