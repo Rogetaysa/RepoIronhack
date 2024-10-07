@@ -8,7 +8,7 @@ import seaborn as sns
 df_cash = pd.read_csv('extract - cash request - data analyst.csv')
 df_fees = pd.read_csv('extract - fees - data analyst - .csv')
 # 1.3. Mostrar les primeres files dels DataFrames
-print("\n\033[1m\033[95mPARTE 1: Primeres files\033[0m")
+print("\n\033[1m\033[95mPARTE 1: Primeras filas\033[0m")
 print("Cash head:")
 print(df_cash.head())
 print("Fees head:")
