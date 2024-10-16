@@ -122,6 +122,15 @@ WHERE k_symbol <> " ";
 -- As a next step if we want to create a filter on these ranks, to find out, let's say which are the top 10 customers or which is the
 --  nth highest customer, we could use this query as a subquery to find the answer to such questions.
 
+SELECT *
+FROM (
+    SELECT account_id, 
+           amount,
+           RANK() OVER(ORDER BY amount DESC) AS Loan_Rank
+    FROM bank.loan
+) AS RankedLoans
+WHERE Loan_Rank <= 10;
+
 -- ==================================================
 -- BONUS: CHECK FOR UNDERSTANDING
 -- ==================================================
@@ -135,7 +144,46 @@ WHERE k_symbol <> " ";
 -- - A12: the unemployment rate
 
 -- 1. Rank districts by different variables.
+SELECT *,
+	RANK() OVER(ORDER BY A4 DESC) AS Rank_Inhabitats
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(ORDER BY A9 DESC) AS Rank_Cities
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(ORDER BY A10 DESC) AS Rank_Urban_Inhabitats
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(ORDER BY A11 DESC) AS Rank_Average_Salary
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(ORDER BY A12 DESC) AS Rank_Unemployment_Rate
+FROM bank.district;
+
 -- 2. Do the same but group by `region`.
+SELECT *,
+	RANK() OVER(PARTITION BY A3 ORDER BY A4 DESC) AS Rank_Inhabitants_By_Region
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(PARTITION BY A3 ORDER BY A9 DESC) AS Rank_Cities_By_Region
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(PARTITION BY A3 ORDER BY A10 DESC) AS Rank_Ratio_Urban_Inhabitants_By_Region
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(PARTITION BY A3 ORDER BY A11 DESC) AS Rank_Average_Salary_By_Region
+FROM bank.district;
+
+SELECT *,
+	RANK() OVER(PARTITION BY A3 ORDER BY A12 DESC) AS Rank_Unemployment_Rate_By_Region
+FROM bank.district;
 
 -- ==================================================
 
