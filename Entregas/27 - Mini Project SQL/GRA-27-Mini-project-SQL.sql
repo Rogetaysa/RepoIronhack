@@ -156,15 +156,11 @@ ORDER BY
 
 
 -- Pregunta 13:
-SELECT st.student_id, st.student_name, st.GPA, sc.school_name
-FROM Student_School st
-JOIN School sc ON st.school_id = sc.school_id
-WHERE st.GPA IN (
-    SELECT GPA
-    FROM Student_School sub
-    WHERE sub.school_id = st.school_id
-    ORDER BY GPA DESC
-    LIMIT 3
-)
-ORDER BY sc.school_name, st.GPA DESC;
+SELECT sc.school_id, st.student_id, st.student_name,
+ROW_NUMBER() OVER(PARTITION BY sc.school_id ORDER BY GPA DESC) AS 'Rank', gpa
+FROM school sc
+LEFT JOIN student st ON sc.school_id = st.school_id
+WHERE st.gpa IS NOT NULL
+HAVING sc.school_id <> '-----------' AND 'Rank' <= 3
+ORDER BY school_id, 'Rank';
 
