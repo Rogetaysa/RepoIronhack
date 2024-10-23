@@ -242,9 +242,26 @@ WHERE rank <=3;
 
 WITH SessionIntervals AS (
     SELECT charger_id, strftime('%Y-%m', start_time) AS month,
-           julianday(LEAD(start_time) OVER (PARTITION BY charger_id ORDER BY start_time)) - julianday(start_time) AS time_between_sessions
-    FROM Sessions
+           round(julianday(LEAD(start_time) OVER (PARTITION BY charger_id ORDER BY start_time)) - julianday(start_time),2) AS time_between_sessions
+    FROM sessions
 )
 SELECT charger_id, month, round(AVG(time_between_sessions) * 24,2) AS avg_time_between_sessions_hours
 FROM SessionIntervals
 GROUP BY charger_id, month;
+
+WITH
+diferencias AS (
+    SELECT
+        charger_id,
+        start_time,
+        LAG(start_time) OVER (PARTITION BY charger_id ORDER BY start_time) AS carga_previa
+    FROM sessions
+)
+SELECT
+    charger_id,
+    STRFTIME('%Y-%m', start_time) AS mes,
+    ROUND(AVG((julianday(start_time) - julianday(carga_previa)) * 24), 2) AS 'Average time between sessions'
+FROM diferencias
+WHERE carga_previa IS NOT NULL
+GROUP BY mes, charger_id
+ORDER BY mes, charger_id;
